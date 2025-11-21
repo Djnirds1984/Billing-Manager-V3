@@ -1,6 +1,7 @@
 
 
 
+
 const express = require('express');
 const cors = require('cors');
 const { RouterOSAPI } = require('node-routeros-v2');
@@ -9,6 +10,7 @@ const https = require('https');
 const path = require('path');
 const sqlite3 = require('@vscode/sqlite3');
 const { open } = require('sqlite');
+const fs = require('fs').promises;
 
 const app = express();
 const PORT = 3002;
@@ -21,31 +23,30 @@ const DB_PATH = path.resolve(__dirname, '../proxy/panel.db');
 
 let db;
 async function getDb() {
-    if (!db) {
-        console.log(`[Backend] Connecting to DB at: ${DB_PATH}`);
-        db = await open({
-            filename: DB_PATH,
-            driver: sqlite3.Database
-        });
-        
-        // Enable WAL mode for concurrency
-        await db.exec('PRAGMA journal_mode = WAL;');
-        
-        // Resilience: Ensure routers table exists
-        await db.exec(`
-            CREATE TABLE IF NOT EXISTS routers (
-                id TEXT PRIMARY KEY,
-                name TEXT,
-                host TEXT,
-                user TEXT,
-                password TEXT,
-                port INTEGER,
-                api_type TEXT
-            );
-        `);
+    if (db) return db;
+
+    // Retry mechanism to wait for the proxy to create the DB
+    for (let i = 0; i < 10; i++) { // Retry for 10 seconds
+        try {
+            await fs.access(DB_PATH);
+            console.log(`[Backend] DB found at ${DB_PATH}. Connecting...`);
+            db = await open({
+                filename: DB_PATH,
+                driver: sqlite3.Database,
+                mode: sqlite3.OPEN_READONLY // Open in read-only mode as this service should not write
+            });
+            await db.exec('PRAGMA journal_mode = WAL;');
+            return db;
+        } catch (e) {
+            console.warn(`[Backend] DB not found (attempt ${i + 1}/10). Waiting...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
     }
-    return db;
+    
+    console.error(`[Backend] Timed out waiting for database at ${DB_PATH}.`);
+    throw new Error('Database not initialized by the main server yet.');
 }
+
 
 // Helper to create router instance based on config
 const createRouterInstance = (config) => {
@@ -442,7 +443,7 @@ app.all('/:routerId/:endpoint(*)', getRouter, async (req, res) => {
             
             // For GET requests, REST API uses the base path to list resources, not '/print'
             if (method === 'GET' && finalEndpoint.endsWith('/print')) {
-                finalEndpoint = finalEndpoint.slice(0, -6);
+                finalEndpoint = finalEndpoint.replace(/\/print$/, '');
             }
             
             const response = await instance.request({

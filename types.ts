@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 
 export type View =
@@ -149,7 +150,7 @@ export interface PppServer {
     interface: string;
     'default-profile': string;
     authentication: string; // "pap,chap,mschap1,mschap2"
-    disabled: string; // 'true' or 'false'
+    disabled: 'true' | 'false';
 }
 
 export type PppServerData = {
@@ -170,7 +171,7 @@ export interface IpAddress {
     id: string;
     address: string;
     interface: string;
-    disabled: string;
+    disabled: 'true' | 'false';
 }
 
 export interface IpRoute {
@@ -179,7 +180,8 @@ export interface IpRoute {
     gateway?: string;
     distance: string;
     active: string;
-    disabled: string;
+    // FIX: Change `disabled` property type to a specific string literal to match IpRouteData.
+    disabled: 'true' | 'false';
     comment?: string;
     static: string;
     dynamic: string;
@@ -242,13 +244,13 @@ export interface PppSecret {
     service: string;
     profile: string;
     comment: string;
-    disabled: string;
+    disabled: 'true' | 'false';
     'last-logged-out'?: string;
     password?: string;
     customer?: Customer; // Link to customer data
 }
 
-export type PppSecretData = Omit<PppSecret, 'id' | 'last-logged-out' | 'customer'>;
+export type PppSecretData = Omit<PppSecret, 'id' | 'last-logged-out' | 'customer' | 'disabled'> & { disabled?: 'true' | 'false' };
 
 export interface PppActiveConnection {
     id: string;

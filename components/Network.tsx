@@ -364,302 +364,21 @@ const VlanFormModal: React.FC<VlanFormModalProps> = ({ isOpen, onClose, onSave, 
 
     return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg border border-slate-200 dark:border-slate-700">
-                <form onSubmit={handleSubmit}>
-                    <div className="p-6">
-                        <h3 className="text-xl font-bold text-[--color-primary-500] dark:text-[--color-primary-400] mb-4">Add New VLAN</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300">VLAN Name</label>
-                                <input type="text" name="name" id="name" value={vlanData.name} onChange={handleChange} required className="mt-1 block w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md py-2 px-3 text-slate-900 dark:text-white focus:outline-none focus:ring-[--color-primary-500]" placeholder="e.g., vlan10-guests" />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label htmlFor="vlan-id" className="block text-sm font-medium text-slate-700 dark:text-slate-300">VLAN ID</label>
-                                    <input type="number" name="vlan-id" id="vlan-id" value={vlanData['vlan-id']} onChange={handleChange} min="1" max="4094" required className="mt-1 block w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md py-2 px-3 text-slate-900 dark:text-white" />
-                                </div>
-                                <div>
-                                    <label htmlFor="interface" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Parent Interface</label>
-                                    <select name="interface" id="interface" value={vlanData.interface} onChange={handleChange} required className="mt-1 block w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md py-2 px-3 text-slate-900 dark:text-white focus:outline-none focus:ring-[--color-primary-500]">
-                                        {interfaces.filter(i => i.type === 'ether' || i.type === 'sfp' || i.type === 'wlan' || i.type === 'bridge').map(i => <option key={i.name} value={i.name}>{i.name}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-900/50 px-6 py-3 flex justify-end space-x-3 rounded-b-lg">
-                        <button type="button" onClick={onClose} disabled={isLoading} className="px-4 py-2 text-sm font-medium rounded-md text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">Cancel</button>
-                        <button type="submit" disabled={isLoading} className="px-4 py-2 text-sm font-medium rounded-md text-white bg-[--color-primary-600] hover:bg-[--color-primary-500]">
-                            {isLoading ? 'Saving...' : 'Save VLAN'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
-
-// --- Route Add/Edit Modal ---
-interface RouteFormModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onSave: (routeData: IpRouteData | (Partial<IpRouteData> & { id: string })) => void;
-    initialData: IpRoute | null;
-    isLoading: boolean;
-}
-
-const RouteFormModal: React.FC<RouteFormModalProps> = ({ isOpen, onClose, onSave, initialData, isLoading }) => {
-    const [route, setRoute] = useState<Partial<IpRouteData>>({ 'dst-address': '0.0.0.0/0', gateway: '', distance: '1', comment: '' });
-
-    useEffect(() => {
-        if (isOpen) {
-            if (initialData) {
-                setRoute({
-                    'dst-address': initialData['dst-address'],
-                    gateway: initialData.gateway || '',
-                    distance: initialData.distance || '1',
-                    comment: initialData.comment || ''
-                });
-            } else {
-                setRoute({ 'dst-address': '0.0.0.0/0', gateway: '', distance: '1', comment: '' });
-            }
-        }
-    }, [initialData, isOpen]);
-    
-    if (!isOpen) return null;
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setRoute(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave(initialData ? { ...route, id: initialData.id } : route as IpRouteData);
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg border border-slate-200 dark:border-slate-700">
-                <form onSubmit={handleSubmit}>
-                    <div className="p-6">
-                        <h3 className="text-xl font-bold text-[--color-primary-500] dark:text-[--color-primary-400] mb-4">{initialData ? 'Edit IP Route' : 'Add New IP Route'}</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label htmlFor="dst-address" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Destination Address</label>
-                                <input type="text" name="dst-address" id="dst-address" value={route['dst-address']} onChange={handleChange} required className="mt-1 block w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md py-2 px-3 text-slate-900 dark:text-white" placeholder="e.g., 0.0.0.0/0 or 192.168.10.0/24" />
-                            </div>
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label htmlFor="gateway" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Gateway</label>
-                                    <input type="text" name="gateway" id="gateway" value={route.gateway} onChange={handleChange} required className="mt-1 block w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md py-2 px-3 text-slate-900 dark:text-white" placeholder="e.g., 192.168.88.1" />
-                                </div>
-                                <div>
-                                    <label htmlFor="distance" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Distance</label>
-                                    <input type="number" name="distance" id="distance" value={route.distance} onChange={handleChange} min="1" className="mt-1 block w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md py-2 px-3 text-slate-900 dark:text-white" />
-                                </div>
-                            </div>
-                            <div>
-                                <label htmlFor="comment" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Comment</label>
-                                <input type="text" name="comment" id="comment" value={route.comment} onChange={handleChange} className="mt-1 block w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md py-2 px-3 text-slate-900 dark:text-white" />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-900/50 px-6 py-3 flex justify-end space-x-3 rounded-b-lg">
-                        <button type="button" onClick={onClose} disabled={isLoading} className="px-4 py-2 text-sm font-medium rounded-md text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">Cancel</button>
-                        <button type="submit" disabled={isLoading} className="px-4 py-2 text-sm font-medium rounded-md text-white bg-[--color-primary-600] hover:bg-[--color-primary-500]">
-                            {isLoading ? 'Saving...' : 'Save Route'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
-
-const TabButton: React.FC<{ label: string, icon: React.ReactNode, isActive: boolean, onClick: () => void }> = ({ label, icon, isActive, onClick }) => (
-    <button
-        onClick={onClick}
-        className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors duration-200 focus:outline-none ${
-            isActive
-                ? 'border-[--color-primary-500] text-[--color-primary-500] dark:text-[--color-primary-400]'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-        }`}
-    >
-        {icon}
-        <span className="ml-2">{label}</span>
-    </button>
-);
-
-// --- WAN Failover Sub-component ---
-const WanFailoverManager: React.FC<{ selectedRouter: RouterConfigWithId }> = ({ selectedRouter }) => {
-    const [wanRoutes, setWanRoutes] = useState<WanRoute[]>([]);
-    const [failoverStatus, setFailoverStatus] = useState<FailoverStatus | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isToggling, setIsToggling] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    const fetchData = useCallback(async () => {
-        // Don't set loading to true on refetch, only on initial load
-        if (wanRoutes.length === 0) setIsLoading(true);
-        setError(null);
-        try {
-            const [routes, status] = await Promise.all([
-                getWanRoutes(selectedRouter),
-                getWanFailoverStatus(selectedRouter)
-            ]);
-            setWanRoutes(routes.filter(r => r['check-gateway']));
-            setFailoverStatus(status);
-        } catch (err) {
-            setError((err as Error).message);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [selectedRouter, wanRoutes.length]);
-
-    useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 5000); // Poll for status updates
-        return () => clearInterval(interval);
-    }, [fetchData]);
-
-    const handleToggleRoute = async (routeId: string, isDisabled: boolean) => {
-        try {
-            await setRouteProperty(selectedRouter, routeId, { disabled: isDisabled ? 'false' : 'true' });
-            await fetchData();
-        } catch (err) {
-            alert(`Failed to toggle route: ${(err as Error).message}`);
-        }
-    };
-
-    const handleToggleFailover = async () => {
-        if (!failoverStatus) return;
-        const confirmAction = window.confirm(`Are you sure you want to ${failoverStatus.enabled ? 'DISABLE' : 'ENABLE'} all WAN routes?`);
-        if (!confirmAction) return;
-        
-        setIsToggling(true);
-        try {
-            await configureWanFailover(selectedRouter, !failoverStatus.enabled);
-            await fetchData();
-        } catch (err) {
-            alert(`Failed to configure failover: ${(err as Error).message}`);
-        } finally {
-            setIsToggling(false);
-        }
-    };
-
-    if (isLoading) return <div className="flex justify-center p-8"><Loader /></div>;
-    if (error) return <div className="p-4 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg">{error}</div>;
-
-    return (
-        <div className="space-y-6">
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                <div>
-                    <h4 className="font-semibold text-lg text-slate-800 dark:text-slate-200">Master Failover Switch</h4>
-                    <p className="text-sm text-slate-500">Enable or disable all WAN routes that have `check-gateway` configured.</p>
-                </div>
-                <button 
-                    onClick={handleToggleFailover} 
-                    disabled={isToggling} 
-                    className={`px-4 py-2 rounded-lg font-semibold text-white w-32 ${failoverStatus?.enabled ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} disabled:opacity-50`}
-                >
-                    {isToggling ? 'Working...' : (failoverStatus?.enabled ? 'Disable All' : 'Enable All')}
-                </button>
-            </div>
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-md">
-                 <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-                    <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Monitored WAN Routes</h3>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead className="text-xs uppercase bg-slate-50 dark:bg-slate-900/50">
-                            <tr>
-                                <th className="px-6 py-3">Gateway</th>
-                                <th className="px-6 py-3">Check Method</th>
-                                <th className="px-6 py-3">Distance</th>
-                                <th className="px-6 py-3">Status</th>
-                                <th className="px-6 py-3 text-center">Enabled</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {wanRoutes.map(route => (
-                                <tr key={route.id} className="border-b dark:border-slate-700 last:border-0">
-                                    <td className="px-6 py-4 font-mono text-cyan-600 dark:text-cyan-400">{route.gateway}</td>
-                                    <td className="px-6 py-4 font-mono">{route['check-gateway']}</td>
-                                    <td className="px-6 py-4 font-mono">{route.distance}</td>
-                                    <td className="px-6 py-4">
-                                        {route.active === 'true'
-                                            ? <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">Active</span>
-                                            : <span className="px-2 py-1 text-xs font-semibold rounded-full bg-slate-200 text-slate-600">Inactive</span>
-                                        }
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <ToggleSwitch checked={route.disabled === 'false'} onChange={() => handleToggleRoute(route.id, route.disabled === 'true')} />
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// --- IP Pool Management Component & Sub-components ---
-const PoolFormModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    onSave: (poolData: Omit<IpPool, 'id'>, poolId?: string) => void;
-    initialData: IpPool | null;
-    isLoading: boolean;
-}> = ({ isOpen, onClose, onSave, initialData, isLoading }) => {
-    const [pool, setPool] = useState({ name: '', ranges: '' });
-
-    useEffect(() => {
-        if (isOpen) {
-            if (initialData) {
-                setPool({ name: initialData.name, ranges: initialData.ranges });
-            } else {
-                setPool({ name: '', ranges: '' });
-            }
-        }
-    }, [initialData, isOpen]);
-
-    if (!isOpen) return null;
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setPool(p => ({ ...p, [name]: value }));
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave(pool, initialData?.id);
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg">
                 <form onSubmit={handleSubmit}>
                     <div className="p-6">
-                        <h3 className="text-xl font-bold mb-4">{initialData ? 'Edit IP Pool' : 'Add New IP Pool'}</h3>
+                        <h3 className="text-xl font-bold mb-4">Add VLAN Interface</h3>
                         <div className="space-y-4">
-                            <div>
-                                <label>Pool Name</label>
-                                <input name="name" value={pool.name} onChange={handleChange} required className="mt-1 w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md" />
-                            </div>
-                            <div>
-                                <label>Ranges</label>
-                                <input name="ranges" value={pool.ranges} onChange={handleChange} required placeholder="e.g., 192.168.10.2-192.168.10.254" className="mt-1 w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md" />
+                            <div><label>VLAN Name</label><input name="name" value={vlanData.name} onChange={handleChange} required className="mt-1 w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md" /></div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label>VLAN ID</label><input type="number" name="vlan-id" value={vlanData['vlan-id']} onChange={handleChange} required min="1" max="4094" className="mt-1 w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md" /></div>
+                                <div><label>Interface</label><select name="interface" value={vlanData.interface} onChange={handleChange} className="mt-1 w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md">{interfaces.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}</select></div>
                             </div>
                         </div>
                     </div>
                     <div className="bg-slate-50 dark:bg-slate-900/50 px-6 py-3 flex justify-end gap-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 rounded-md">Cancel</button>
-                        <button type="submit" disabled={isLoading} className="px-4 py-2 bg-[--color-primary-600] text-white rounded-md disabled:opacity-50">
-                            {isLoading ? 'Saving...' : 'Save'}
-                        </button>
+                        <button type="button" onClick={onClose} disabled={isLoading}>Cancel</button>
+                        <button type="submit" disabled={isLoading} className="px-4 py-2 bg-[--color-primary-600] text-white rounded-md disabled:opacity-50">{isLoading ? 'Adding...' : 'Add VLAN'}</button>
                     </div>
                 </form>
             </div>
@@ -667,22 +386,21 @@ const PoolFormModal: React.FC<{
     );
 };
 
-const IpPoolManager: React.FC<{ selectedRouter: RouterConfigWithId }> = ({ selectedRouter }) => {
-    const [pools, setPools] = useState<IpPool[]>([]);
+const VlanManager: React.FC<{ selectedRouter: RouterConfigWithId, interfaces: Interface[], onDataChange: () => void }> = ({ selectedRouter, interfaces, onDataChange }) => {
+    const [vlans, setVlans] = useState<VlanInterface[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingPool, setEditingPool] = useState<IpPool | null>(null);
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
-            const data = await getIpPools(selectedRouter);
-            setPools(data);
+            const data = await getVlans(selectedRouter);
+            setVlans(data);
         } catch (err) {
-            setError(`Failed to fetch IP pools: ${(err as Error).message}`);
+            setError((err as Error).message);
         } finally {
             setIsLoading(false);
         }
@@ -692,70 +410,206 @@ const IpPoolManager: React.FC<{ selectedRouter: RouterConfigWithId }> = ({ selec
         fetchData();
     }, [fetchData]);
 
-    const handleSave = async (poolData: Omit<IpPool, 'id'>, poolId?: string) => {
+    const handleSave = async (vlanData: Omit<VlanInterface, 'id'>) => {
         setIsSubmitting(true);
         try {
-            if (poolId) {
-                await updateIpPool(selectedRouter, poolId, poolData);
-            } else {
-                await addIpPool(selectedRouter, poolData);
-            }
+            await addVlan(selectedRouter, vlanData);
             setIsModalOpen(false);
             await fetchData();
+            onDataChange(); // Notify parent to refetch interfaces
         } catch (err) {
-            alert(`Failed to save IP pool: ${(err as Error).message}`);
+            alert(`Failed to add VLAN: ${(err as Error).message}`);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
+    const handleDelete = async (vlanId: string) => {
+        if (!window.confirm("Are you sure you want to delete this VLAN interface?")) return;
+        setIsSubmitting(true);
+        try {
+            await deleteVlan(selectedRouter, vlanId);
+            await fetchData();
+            onDataChange();
+        } catch (err) {
+            alert(`Failed to delete VLAN: ${(err as Error).message}`);
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const handleDelete = async (poolId: string) => {
-        if (!window.confirm("Are you sure you want to delete this IP pool?")) return;
-        try {
-            await deleteIpPool(selectedRouter, poolId);
-            await fetchData();
-        } catch (err) {
-            alert(`Failed to delete IP pool: ${(err as Error).message}`);
-        }
-    };
-
     if (isLoading) return <div className="flex justify-center p-8"><Loader /></div>;
-    if (error) return <div className="p-4 bg-red-100 text-red-700 rounded-md">{error}</div>;
+    if (error) return <div className="p-4 bg-red-100 text-red-700">{error}</div>;
 
     return (
         <div>
-            <PoolFormModal 
-                isOpen={isModalOpen} 
-                onClose={() => setIsModalOpen(false)} 
-                onSave={handleSave} 
-                initialData={editingPool} 
-                isLoading={isSubmitting} 
-            />
+            <VlanFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSave} interfaces={interfaces} isLoading={isSubmitting} />
             <div className="flex justify-end mb-4">
-                <button 
-                    onClick={() => { setEditingPool(null); setIsModalOpen(true); }} 
-                    className="bg-[--color-primary-600] hover:bg-[--color-primary-700] text-white font-bold py-2 px-4 rounded-lg"
-                >
-                    Add Pool
-                </button>
+                <button onClick={() => setIsModalOpen(true)} className="bg-[--color-primary-600] text-white font-bold py-2 px-4 rounded-lg">Add VLAN</button>
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden">
                 <table className="w-full text-sm">
                     <thead className="text-xs uppercase bg-slate-50 dark:bg-slate-900/50">
                         <tr>
                             <th className="px-6 py-3">Name</th>
-                            <th className="px-6 py-3">Ranges</th>
+                            <th className="px-6 py-3">VLAN ID</th>
+                            <th className="px-6 py-3">Interface</th>
                             <th className="px-6 py-3 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {pools.map(pool => (
-                            <tr key={pool.id} className="border-b dark:border-slate-700">
-                                <td className="px-6 py-4 font-medium">{pool.name}</td>
-                                <td className="px-6 py-4 font-mono">{pool.ranges}</td>
+                        {vlans.map(v => (
+                            <tr key={v.id} className="border-b dark:border-slate-700">
+                                <td className="px-6 py-4 font-medium">{v.name}</td>
+                                <td>{v['vlan-id']}</td>
+                                <td>{v.interface}</td>
+                                <td className="px-6 py-4 text-right">
+                                    <button onClick={() => handleDelete(v.id)} disabled={isSubmitting}><TrashIcon className="w-5 h-5"/></button>
+                                </td>
+                            </tr>
+                        ))}
+                        {vlans.length === 0 && (
+                            <tr>
+                                <td colSpan={4} className="text-center py-8 text-slate-500">No VLANs configured.</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+const IpRouteFormModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (routeData: IpRouteData, routeId?: string) => void;
+    initialData: IpRoute | null;
+    isLoading: boolean;
+}> = ({ isOpen, onClose, onSave, initialData, isLoading }) => {
+    // FIX: Initialize with default data to satisfy IpRouteData type.
+    const [route, setRoute] = useState<IpRouteData>({ 'dst-address': '0.0.0.0/0', gateway: '', distance: '1', disabled: 'false' });
+
+    useEffect(() => {
+        if (isOpen) {
+            setRoute(initialData ? { ...initialData } : { 'dst-address': '0.0.0.0/0', gateway: '', distance: '1', disabled: 'false' });
+        }
+    }, [initialData, isOpen]);
+
+    if (!isOpen) return null;
+    
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setRoute(r => ({ ...r, [name]: value }));
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSave(route, initialData?.id);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg">
+                <form onSubmit={handleSubmit}>
+                    <div className="p-6">
+                        <h3 className="text-xl font-bold mb-4">{initialData ? 'Edit IP Route' : 'Add IP Route'}</h3>
+                        <div className="space-y-4">
+                            <div><label>Dst. Address</label><input name="dst-address" value={route['dst-address']} onChange={handleChange} required className="mt-1 w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md"/></div>
+                            <div><label>Gateway</label><input name="gateway" value={route.gateway} onChange={handleChange} required className="mt-1 w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md"/></div>
+                            <div><label>Distance</label><input type="number" name="distance" value={route.distance} onChange={handleChange} className="mt-1 w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md"/></div>
+                        </div>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-900/50 px-6 py-3 flex justify-end gap-4">
+                        <button type="button" onClick={onClose}>Cancel</button>
+                        <button type="submit" disabled={isLoading} className="px-4 py-2 bg-[--color-primary-600] text-white rounded-md disabled:opacity-50">{isLoading ? 'Saving...' : 'Save'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+const IpRouteManager: React.FC<{ selectedRouter: RouterConfigWithId, interfaces: Interface[] }> = ({ selectedRouter, interfaces }) => {
+    const [routes, setRoutes] = useState<IpRoute[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingRoute, setEditingRoute] = useState<IpRoute | null>(null);
+
+    const fetchData = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const data = await getIpRoutes(selectedRouter);
+            setRoutes(data);
+        } catch (err) {
+            setError((err as Error).message);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [selectedRouter]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const handleSave = async (routeData: IpRouteData, routeId?: string) => {
+        setIsSubmitting(true);
+        try {
+            if (routeId) {
+                await updateIpRoute(selectedRouter, routeId, routeData);
+            } else {
+                await addIpRoute(selectedRouter, routeData);
+            }
+            setIsModalOpen(false);
+            await fetchData();
+        } catch (err) {
+            alert(`Failed to save route: ${(err as Error).message}`);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
+    const handleDelete = async (routeId: string) => {
+        if (!window.confirm("Are you sure?")) return;
+        try {
+            await deleteIpRoute(selectedRouter, routeId);
+            await fetchData();
+        } catch (err) {
+            alert(`Failed to delete route: ${(err as Error).message}`);
+        }
+    };
+    
+    if (isLoading) return <div className="flex justify-center p-8"><Loader /></div>;
+    if (error) return <div className="p-4 bg-red-100 text-red-700">{error}</div>;
+
+    return (
+        <div>
+            <IpRouteFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSave} initialData={editingRoute} isLoading={isSubmitting} />
+            <div className="flex justify-end mb-4">
+                <button onClick={() => { setEditingRoute(null); setIsModalOpen(true); }} className="bg-[--color-primary-600] text-white font-bold py-2 px-4 rounded-lg">Add Route</button>
+            </div>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden">
+                <table className="w-full text-sm">
+                    <thead className="text-xs uppercase bg-slate-50 dark:bg-slate-900/50">
+                        <tr>
+                            <th className="px-6 py-3">Destination</th>
+                            <th className="px-6 py-3">Gateway</th>
+                            <th className="px-6 py-3">Status</th>
+                            <th className="px-6 py-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {routes.map(r => (
+                            <tr key={r.id} className={`border-b dark:border-slate-700 ${r.disabled==='true' ? 'opacity-50':''}`}>
+                                <td className="px-6 py-4 font-mono">{r['dst-address']}</td>
+                                <td>{r.gateway}</td>
+                                <td>{r.active === 'true' ? <span className="text-green-500">Active</span> : <span className="text-slate-500">Inactive</span>}</td>
                                 <td className="px-6 py-4 text-right space-x-2">
-                                    <button onClick={() => { setEditingPool(pool); setIsModalOpen(true); }} className="p-1"><EditIcon className="w-5 h-5"/></button>
-                                    <button onClick={() => handleDelete(pool.id)} className="p-1"><TrashIcon className="w-5 h-5"/></button>
+                                    {r.static === 'true' && <button onClick={() => { setEditingRoute(r); setIsModalOpen(true); }}><EditIcon className="w-5 h-5"/></button>}
+                                    {r.static === 'true' && <button onClick={() => handleDelete(r.id)}><TrashIcon className="w-5 h-5"/></button>}
                                 </td>
                             </tr>
                         ))}
@@ -766,61 +620,25 @@ const IpPoolManager: React.FC<{ selectedRouter: RouterConfigWithId }> = ({ selec
     );
 };
 
-
-// --- Main Component ---
-type ActiveTab = 'wan' | 'routes' | 'firewall' | 'aiwan' | 'dhcp' | 'pools' | 'bridge';
-
-export const Network: React.FC<{ selectedRouter: RouterConfigWithId | null }> = ({ selectedRouter }) => {
-    const [activeTab, setActiveTab] = useState<ActiveTab>('wan');
-    const [vlans, setVlans] = useState<VlanInterface[]>([]);
-    const [interfaces, setInterfaces] = useState<Interface[]>([]);
-    const [ipAddresses, setIpAddresses] = useState<IpAddress[]>([]);
-    const [routes, setRoutes] = useState<IpRoute[]>([]);
+const WanFailoverManager: React.FC<{ selectedRouter: RouterConfigWithId }> = ({ selectedRouter }) => {
+    const [status, setStatus] = useState<FailoverStatus | null>(null);
+    const [routes, setRoutes] = useState<WanRoute[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isVlanModalOpen, setIsVlanModalOpen] = useState(false);
-    const [isRouteModalOpen, setIsRouteModalOpen] = useState(false);
-    const [editingRoute, setEditingRoute] = useState<IpRoute | null>(null);
-
-    // Multi-WAN state
-    const [wanInterfaces, setWanInterfaces] = useState('ether1, ether2');
-    const [lanInterface, setLanInterface] = useState('');
-    const [wanType, setWanType] = useState<'pcc' | 'pbr'>('pcc');
-    const [wanScript, setWanScript] = useState('');
-    const [isGenerating, setIsGenerating] = useState(false);
-
+    
     const fetchData = useCallback(async () => {
-        if (!selectedRouter) {
-            setIsLoading(false);
-            setVlans([]);
-            setInterfaces([]);
-            setIpAddresses([]);
-            setRoutes([]);
-            return;
-        }
         setIsLoading(true);
         setError(null);
-
         try {
-            const [vlanData, interfaceData, ipData, routeData] = await Promise.all([
-                getVlans(selectedRouter),
-                getInterfaces(selectedRouter),
-                getIpAddresses(selectedRouter),
-                getIpRoutes(selectedRouter)
+            const [statusData, routesData] = await Promise.all([
+                getWanFailoverStatus(selectedRouter),
+                getWanRoutes(selectedRouter)
             ]);
-            setVlans(vlanData);
-            setInterfaces(interfaceData);
-            setIpAddresses(ipData);
-            setRoutes(routeData);
-            
-            if (interfaceData.length > 0) {
-                const defaultLan = interfaceData.find(i => i.type === 'bridge' && i.name.toLowerCase().includes('lan'))?.name || interfaceData.find(i => i.type === 'bridge')?.name || '';
-                setLanInterface(defaultLan);
-            }
+            setStatus(statusData);
+            setRoutes(routesData.filter(r => r.checkGateway === 'ping'));
         } catch (err) {
-            console.error("Failed to fetch network data:", err);
-            setError(`Could not fetch network data from "${selectedRouter.name}". Ensure the router is connected.`);
+            setError((err as Error).message);
         } finally {
             setIsLoading(false);
         }
@@ -829,106 +647,97 @@ export const Network: React.FC<{ selectedRouter: RouterConfigWithId | null }> = 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
-
-    const sortedRoutes = useMemo(() => {
-        return [...routes].sort((a, b) => {
-            if (a['dst-address'] === '0.0.0.0/0') return -1;
-            if (b['dst-address'] === '0.0.0.0/0') return 1;
-            return a['dst-address'].localeCompare(b['dst-address']);
-        });
-    }, [routes]);
-
-    const handleAddVlan = async (vlanData: Omit<VlanInterface, 'id'>) => {
-        if (!selectedRouter) return;
-        setIsSubmitting(true);
-        try {
-            await addVlan(selectedRouter, vlanData);
-            setIsVlanModalOpen(false);
-            await fetchData();
-        } catch (err) {
-            alert(`Error adding VLAN: ${(err as Error).message}`);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleDeleteVlan = async (vlanId: string) => {
-        if (!selectedRouter || !window.confirm("Are you sure you want to delete this VLAN interface?")) return;
-        setIsSubmitting(true);
-        try {
-            await deleteVlan(selectedRouter, vlanId);
-            await fetchData();
-        } catch (err) {
-            alert(`Error deleting VLAN: ${(err as Error).message}`);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleSaveRoute = async (routeData: IpRouteData | (Partial<IpRouteData> & { id: string })) => {
-        if (!selectedRouter) return;
-        setIsSubmitting(true);
-        try {
-            if ('id' in routeData) {
-                const { id, ...dataToUpdate } = routeData;
-                await updateIpRoute(selectedRouter, id, dataToUpdate);
-            } else {
-                await addIpRoute(selectedRouter, routeData as IpRouteData);
-            }
-            setIsRouteModalOpen(false);
-            await fetchData();
-        } catch (err) {
-            alert(`Error saving route: ${(err as Error).message}`);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleDeleteRoute = async (route: IpRoute) => {
-        if (!selectedRouter || route.dynamic === 'true' || route.connected === 'true') return;
-        if (window.confirm(`Are you sure you want to delete the route to "${route['dst-address']}"?`)) {
-            setIsSubmitting(true);
-            try {
-                await deleteIpRoute(selectedRouter, route.id);
-                await fetchData();
-            } catch (err) {
-                alert(`Error deleting route: ${(err as Error).message}`);
-            } finally {
-                setIsSubmitting(false);
-            }
-        }
-    };
-
-    const handleGenerateWanScript = async () => {
-        if (!wanInterfaces.trim() || !lanInterface) {
-            alert("Please specify at least one WAN interface and a LAN interface.");
-            return;
-        }
-        setIsGenerating(true);
-        setWanScript('');
-        try {
-            const wanList = wanInterfaces.split(',').map(i => i.trim()).filter(Boolean);
-            const script = await generateMultiWanScript(wanList, lanInterface, wanType);
-            setWanScript(script);
-        } catch (err) {
-            setWanScript(`# Error generating script: ${(err as Error).message}`);
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
-    const wanIps = useMemo(() => {
-        const wanNames = wanInterfaces.split(',').map(i => i.trim().toLowerCase());
-        return ipAddresses
-            .filter(ip => wanNames.includes(ip.interface.toLowerCase()))
-            .map(ip => `${ip.interface} (${ip.address})`)
-            .join(', ');
-    }, [wanInterfaces, ipAddresses]);
-
-    const lanIp = useMemo(() => {
-        return ipAddresses.find(ip => ip.interface.toLowerCase() === lanInterface.toLowerCase())?.address || null;
-    }, [lanInterface, ipAddresses]);
     
+    const handleToggleFailover = async (enabled: boolean) => {
+        setIsSubmitting(true);
+        try {
+            await configureWanFailover(selectedRouter, enabled);
+            await fetchData();
+        } catch (err) {
+            alert(`Failed to toggle failover: ${(err as Error).message}`);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
+    if (isLoading) return <div className="flex justify-center p-8"><Loader /></div>;
+    if (error) return <div className="p-4 bg-red-100 text-red-700">{error}</div>;
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                <h3 className="text-xl font-bold">WAN Failover Status</h3>
+                {status && (
+                    <div className="flex items-center gap-4">
+                        <span className={`font-semibold ${status.enabled ? 'text-green-500' : 'text-red-500'}`}>{status.enabled ? 'Enabled' : 'Disabled'}</span>
+                        <ToggleSwitch checked={status.enabled} onChange={() => handleToggleFailover(!status.enabled)} disabled={isSubmitting} />
+                    </div>
+                )}
+            </div>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden">
+                <table className="w-full text-sm">
+                    <thead className="text-xs uppercase bg-slate-50 dark:bg-slate-900/50">
+                        <tr>
+                            <th className="px-6 py-3">Gateway</th>
+                            <th className="px-6 py-3">Distance</th>
+                            <th className="px-6 py-3">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {routes.map(r => (
+                            <tr key={r.id} className={`border-b dark:border-slate-700 ${r.disabled==='true' ? 'opacity-50':''}`}>
+                                <td className="px-6 py-4 font-mono">{r.gateway}</td>
+                                <td>{r.distance}</td>
+                                <td>{r.active === 'true' ? <span className="text-green-500">Active</span> : <span className="text-red-500">Inactive</span>}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+type NetworkTab = 'vlans' | 'dhcp' | 'routes' | 'failover' | 'firewall' | 'bridges';
+
+const TabButton: React.FC<{ label: string, icon: React.ReactNode, isActive: boolean, onClick: () => void }> = ({ label, icon, isActive, onClick }) => (
+    <button
+        onClick={onClick}
+        className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors duration-200 focus:outline-none ${
+            isActive
+                ? 'border-[--color-primary-500] text-[--color-primary-500] dark:text-[--color-primary-400]'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+        }`}
+    >
+        {icon}
+        <span className="hidden sm:inline">{label}</span>
+    </button>
+);
+
+
+export const Network: React.FC<{ selectedRouter: RouterConfigWithId | null }> = ({ selectedRouter }) => {
+    const [activeTab, setActiveTab] = useState<NetworkTab>('routes');
+    const [interfaces, setInterfaces] = useState<Interface[]>([]);
+    const [isLoadingInterfaces, setIsLoadingInterfaces] = useState(true);
+
+    const fetchInterfaces = useCallback(async () => {
+        if (!selectedRouter) return;
+        setIsLoadingInterfaces(true);
+        try {
+            const ifaces = await getInterfaces(selectedRouter);
+            setInterfaces(ifaces);
+        } catch (error) {
+            console.error("Failed to fetch interfaces for Network component", error);
+            setInterfaces([]);
+        } finally {
+            setIsLoadingInterfaces(false);
+        }
+    }, [selectedRouter]);
+
+    useEffect(() => {
+        fetchInterfaces();
+    }, [fetchInterfaces]);
+
     if (!selectedRouter) {
         return (
             <div className="flex flex-col items-center justify-center h-96 text-center bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
@@ -939,181 +748,31 @@ export const Network: React.FC<{ selectedRouter: RouterConfigWithId | null }> = 
         );
     }
     
-    if (isLoading && activeTab !== 'dhcp' && activeTab !== 'pools') { // Let DHCP/Pool manager handle its own loading
-        return (
-            <div className="flex flex-col items-center justify-center h-64">
-                <Loader />
-                <p className="mt-4 text-[--color-primary-500] dark:text-[--color-primary-400]">Fetching network data from {selectedRouter.name}...</p>
-            </div>
-        );
-    }
-    
-    if (error && (activeTab !== 'wan' && activeTab !== 'dhcp' && activeTab !== 'pools')) { 
-         return (
-            <div className="flex flex-col items-center justify-center h-64 bg-white dark:bg-slate-800 rounded-lg border border-red-300 dark:border-red-700 p-6 text-center">
-                <p className="text-xl font-semibold text-red-600 dark:text-red-400">Failed to load data.</p>
-                <p className="mt-2 text-slate-500 dark:text-slate-400 text-sm">{error}</p>
-            </div>
-         );
-    }
-
-    const renderActiveTab = () => {
+    const renderContent = () => {
         switch(activeTab) {
-            case 'wan':
-                return <WanFailoverManager selectedRouter={selectedRouter} />;
-            case 'routes':
-                 return (
-                    <div className="space-y-8">
-                        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-md">
-                            <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">IP Routes</h3>
-                                <button onClick={() => { setEditingRoute(null); setIsRouteModalOpen(true); }} className="bg-[--color-primary-600] hover:bg-[--color-primary-500] text-white font-bold py-2 px-3 rounded-lg text-sm">
-                                    Add Route
-                                </button>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-50 dark:bg-slate-900/50">
-                                        <tr>
-                                            <th className="px-6 py-3">Destination</th><th className="px-6 py-3">Gateway</th><th className="px-6 py-3">Distance</th><th className="px-6 py-3">Status</th><th className="px-6 py-3">Comment</th><th className="px-6 py-3 text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {sortedRoutes.map(route => (
-                                            <tr key={route.id} className="border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                                                <td className="px-6 py-4 font-mono text-slate-800 dark:text-slate-200">{route['dst-address']}</td>
-                                                <td className="px-6 py-4 font-mono text-cyan-600 dark:text-cyan-400">{route.gateway}</td>
-                                                <td className="px-6 py-4 font-mono">{route.distance}</td>
-                                                <td className="px-6 py-4"><div className="flex items-center flex-wrap gap-1">
-                                                    {route.active === 'true' && route.disabled === 'false' && <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400">Active</span>}
-                                                    {route.active === 'false' && route.disabled === 'false' && <span className="px-2 py-1 text-xs font-semibold rounded-full bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-400">Inactive</span>}
-                                                    {route.disabled === 'true' && <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">Disabled</span>}
-                                                </div></td>
-                                                <td className="px-6 py-4 text-slate-500 italic">{route.comment}</td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <button onClick={() => { setEditingRoute(route); setIsRouteModalOpen(true); }} disabled={route.dynamic === 'true' || route.connected === 'true'} className="p-2 text-slate-500 dark:text-slate-400 hover:text-sky-500 rounded-md disabled:opacity-50"><EditIcon className="h-5 w-5" /></button>
-                                                    <button onClick={() => handleDeleteRoute(route)} disabled={isSubmitting || route.dynamic === 'true' || route.connected === 'true'} className="p-2 text-slate-500 dark:text-slate-400 hover:text-red-500 rounded-md disabled:opacity-50"><TrashIcon className="h-5 w-5" /></button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                 );
-            case 'firewall':
-                return <Firewall selectedRouter={selectedRouter} interfaces={interfaces} />;
-            case 'aiwan':
-                 return (
-                     <div className="space-y-6">
-                         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-6">
-                             <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mb-4">AI Multi-WAN Script Generator</h3>
-                             <div className="space-y-4">
-                                 <div>
-                                     <label className="block text-sm font-medium">WAN Interfaces (comma separated)</label>
-                                     <input type="text" value={wanInterfaces} onChange={e => setWanInterfaces(e.target.value)} className="mt-1 block w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md" placeholder="ether1, ether2" />
-                                 </div>
-                                 <div>
-                                     <label className="block text-sm font-medium">LAN Interface</label>
-                                     <input type="text" value={lanInterface} onChange={e => setLanInterface(e.target.value)} className="mt-1 block w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md" placeholder="bridge-local" />
-                                 </div>
-                                 <div>
-                                     <label className="block text-sm font-medium">Configuration Type</label>
-                                     <select value={wanType} onChange={e => setWanType(e.target.value as any)} className="mt-1 block w-full p-2 bg-slate-100 dark:bg-slate-700 rounded-md">
-                                         <option value="pcc">Load Balancing (PCC)</option>
-                                         <option value="pbr">Failover (PBR)</option>
-                                     </select>
-                                 </div>
-                                 <button onClick={handleGenerateWanScript} disabled={isGenerating} className="bg-[--color-primary-600] hover:bg-[--color-primary-500] text-white font-bold py-2 px-4 rounded-lg">
-                                     {isGenerating ? 'Generating...' : 'Generate Script'}
-                                 </button>
-                             </div>
-                             {wanScript && (
-                                 <div className="mt-6">
-                                     <h4 className="font-semibold mb-2">Generated Script</h4>
-                                     <div className="h-64 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
-                                        <CodeBlock script={wanScript} />
-                                     </div>
-                                 </div>
-                             )}
-                         </div>
-                     </div>
-                 );
-            case 'dhcp':
-                return <DhcpManager selectedRouter={selectedRouter} />;
-            case 'pools':
-                return <IpPoolManager selectedRouter={selectedRouter} />;
-            case 'bridge':
-                return <BridgeManager selectedRouter={selectedRouter} interfaces={interfaces} onDataChange={fetchData} />;
-            default:
-                return null;
+            case 'vlans': return <VlanManager selectedRouter={selectedRouter} interfaces={interfaces} onDataChange={fetchInterfaces} />;
+            case 'dhcp': return <DhcpManager selectedRouter={selectedRouter} />;
+            case 'routes': return <IpRouteManager selectedRouter={selectedRouter} interfaces={interfaces} />;
+            case 'failover': return <WanFailoverManager selectedRouter={selectedRouter} />;
+            case 'firewall': return <Firewall selectedRouter={selectedRouter} interfaces={interfaces} />;
+            case 'bridges': return <BridgeManager selectedRouter={selectedRouter} interfaces={interfaces} onDataChange={fetchInterfaces} />;
+            default: return null;
         }
     };
-
+    
     return (
-        <div className="max-w-7xl mx-auto space-y-6">
-             <VlanFormModal isOpen={isVlanModalOpen} onClose={() => setIsVlanModalOpen(false)} onSave={handleAddVlan} interfaces={interfaces} isLoading={isSubmitting} />
-             <RouteFormModal isOpen={isRouteModalOpen} onClose={() => { setIsRouteModalOpen(false); setEditingRoute(null); }} onSave={handleSaveRoute} initialData={editingRoute} isLoading={isSubmitting} />
-             
-             <div className="border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
-                <nav className="flex space-x-2 -mb-px">
-                    <TabButton label="WAN & Failover" icon={<ShieldCheckIcon className="w-5 h-5" />} isActive={activeTab === 'wan'} onClick={() => setActiveTab('wan')} />
-                    <TabButton label="Routes" icon={<ShareIcon className="w-5 h-5" />} isActive={activeTab === 'routes'} onClick={() => setActiveTab('routes')} />
-                    <TabButton label="Firewall" icon={<ShieldCheckIcon className="w-5 h-5" />} isActive={activeTab === 'firewall'} onClick={() => setActiveTab('firewall')} />
-                    <TabButton label="DHCP" icon={<ServerIcon className="w-5 h-5" />} isActive={activeTab === 'dhcp'} onClick={() => setActiveTab('dhcp')} />
-                    <TabButton label="IP Pools" icon={<CircleStackIcon className="w-5 h-5" />} isActive={activeTab === 'pools'} onClick={() => setActiveTab('pools')} />
-                    <TabButton label="Bridge & Ports" icon={<BridgeIcon className="w-5 h-5" />} isActive={activeTab === 'bridge'} onClick={() => setActiveTab('bridge')} />
-                    <TabButton label="VLANs" icon={<VlanIcon className="w-5 h-5" />} isActive={activeTab === 'aiwan'} onClick={() => { /* Reuse AI WAN tab for VLANs temporarily or create separate */ setIsVlanModalOpen(true); }} />
-                    <TabButton label="Multi-WAN Gen" icon={<RouterIcon className="w-5 h-5" />} isActive={activeTab === 'aiwan'} onClick={() => setActiveTab('aiwan')} />
+        <div className="space-y-6">
+            <div className="border-b border-slate-200 dark:border-slate-700">
+                <nav className="flex space-x-2 -mb-px overflow-x-auto" aria-label="Tabs">
+                    <TabButton label="IP Routes" icon={<ShareIcon className="w-5 h-5"/>} isActive={activeTab === 'routes'} onClick={() => setActiveTab('routes')} />
+                    <TabButton label="WAN Failover" icon={<ShareIcon className="w-5 h-5"/>} isActive={activeTab === 'failover'} onClick={() => setActiveTab('failover')} />
+                    <TabButton label="Firewall" icon={<ShieldCheckIcon className="w-5 h-5"/>} isActive={activeTab === 'firewall'} onClick={() => setActiveTab('firewall')} />
+                    <TabButton label="Bridges" icon={<BridgeIcon className="w-5 h-5"/>} isActive={activeTab === 'bridges'} onClick={() => setActiveTab('bridges')} />
+                    <TabButton label="VLANs" icon={<VlanIcon className="w-5 h-5"/>} isActive={activeTab === 'vlans'} onClick={() => setActiveTab('vlans')} />
+                    <TabButton label="DHCP Server" icon={<ServerIcon className="w-5 h-5"/>} isActive={activeTab === 'dhcp'} onClick={() => setActiveTab('dhcp')} />
                 </nav>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                 <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <h4 className="text-sm font-semibold text-slate-500 dark:text-slate-400">LAN Interface (Detected)</h4>
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">{lanInterface || 'None'}</p>
-                    <p className="text-xs text-slate-500">{lanIp ? lanIp : 'No IP assigned'}</p>
-                 </div>
-                 <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <h4 className="text-sm font-semibold text-slate-500 dark:text-slate-400">WAN IPs (Detected)</h4>
-                    <p className="text-lg font-bold text-slate-900 dark:text-white truncate">{wanIps || 'None'}</p>
-                 </div>
-            </div>
-
-            {renderActiveTab()}
-
-             {activeTab === 'aiwan' && vlans.length > 0 && (
-                 <div className="mt-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-md overflow-hidden">
-                     <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-                        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Configured VLANs</h3>
-                     </div>
-                     <table className="w-full text-sm text-left">
-                         <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-50 dark:bg-slate-900/50">
-                             <tr>
-                                 <th className="px-6 py-3">Name</th>
-                                 <th className="px-6 py-3">VLAN ID</th>
-                                 <th className="px-6 py-3">Interface</th>
-                                 <th className="px-6 py-3 text-right">Actions</th>
-                             </tr>
-                         </thead>
-                         <tbody>
-                             {vlans.map(vlan => (
-                                 <tr key={vlan.id} className="border-b border-slate-200 dark:border-slate-700 last:border-b-0">
-                                     <td className="px-6 py-4 font-medium">{vlan.name}</td>
-                                     <td className="px-6 py-4 font-mono">{vlan['vlan-id']}</td>
-                                     <td className="px-6 py-4 font-mono">{vlan.interface}</td>
-                                     <td className="px-6 py-4 text-right">
-                                         <button onClick={() => handleDeleteVlan(vlan.id)} disabled={isSubmitting} className="p-2 text-slate-500 hover:text-red-500 disabled:opacity-50">
-                                             <TrashIcon className="h-5 w-5" />
-                                         </button>
-                                     </td>
-                                 </tr>
-                             ))}
-                         </tbody>
-                     </table>
-                 </div>
-             )}
+            {isLoadingInterfaces ? <div className="flex justify-center p-8"><Loader /></div> : renderContent()}
         </div>
     );
 };
