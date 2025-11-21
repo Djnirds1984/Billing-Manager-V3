@@ -3,6 +3,7 @@ import { Loader } from './Loader.tsx';
 import { KeyIcon, CheckCircleIcon, ExclamationTriangleIcon, TrashIcon } from '../constants.tsx';
 import type { LicenseStatus } from '../types.ts';
 import { getAuthHeader } from '../services/databaseService.ts';
+import { useAuth } from '../contexts/AuthContext.tsx'; // Import useAuth
 
 interface LicenseProps {
     onLicenseChange: () => void;
@@ -10,6 +11,7 @@ interface LicenseProps {
 }
 
 export const License: React.FC<LicenseProps> = ({ onLicenseChange, licenseStatus }) => {
+    const { logout } = useAuth(); // Get logout function
     const [newLicenseKey, setNewLicenseKey] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
@@ -100,10 +102,13 @@ export const License: React.FC<LicenseProps> = ({ onLicenseChange, licenseStatus
                         </div>
                     )}
                     
-                    <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+                    <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 flex flex-col items-center gap-4">
                          <button onClick={handleRevoke} disabled={isSubmitting} className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50">
                             {isSubmitting ? <Loader /> : <TrashIcon className="w-5 h-5" />}
                             Revoke License
+                        </button>
+                         <button onClick={() => logout()} className="text-sm text-slate-500 dark:text-slate-400 hover:underline">
+                            Log Out
                         </button>
                     </div>
                 </div>
@@ -170,6 +175,9 @@ export const License: React.FC<LicenseProps> = ({ onLicenseChange, licenseStatus
                         </button>
                     </div>
                 </form>
+                <p className="mt-4 text-center text-sm text-slate-500 dark:text-slate-400">
+                    Or <button onClick={() => logout()} className="font-medium text-[--color-primary-600] hover:underline">log out</button> to switch users.
+                </p>
             </div>
         </div>
     );
