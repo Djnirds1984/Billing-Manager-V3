@@ -551,6 +551,20 @@ async function startServer() {
 
     app.use('/api/db', dbRouter);
 
+    // New endpoint for backend to fetch router configs
+    app.get('/api/db/routers/:id', protect, async (req, res) => {
+        try {
+            const { id } = req.params;
+            const router = await db.get('SELECT * FROM routers WHERE id = ?', [id]);
+            if (!router) {
+                return res.status(404).json({ message: 'Router not found' });
+            }
+            res.json(router);
+        } catch (e) {
+            res.status(500).json({ message: e.message });
+        }
+    });
+
     // --- Xendit API ---
     const xenditRouter = express.Router();
     xenditRouter.use(protect);

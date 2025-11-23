@@ -1,52 +1,14 @@
-
-
-
-
 const express = require('express');
 const cors = require('cors');
 const { RouterOSAPI } = require('node-routeros-v2');
 const axios = require('axios');
 const https = require('https');
-const path = require('path');
-const sqlite3 = require('@vscode/sqlite3');
-const { open } = require('sqlite');
-const fs = require('fs').promises;
 
 const app = express();
 const PORT = 3002;
 
 app.use(cors());
 app.use(express.json());
-
-// Database setup - pointing to the proxy's DB
-const DB_PATH = path.resolve(__dirname, '../proxy/panel.db');
-
-let db;
-async function getDb() {
-    if (db) return db;
-
-    // Retry mechanism to wait for the proxy to create the DB
-    for (let i = 0; i < 10; i++) { // Retry for 10 seconds
-        try {
-            await fs.access(DB_PATH);
-            console.log(`[Backend] DB found at ${DB_PATH}. Connecting...`);
-            db = await open({
-                filename: DB_PATH,
-                driver: sqlite3.Database,
-                mode: sqlite3.OPEN_READONLY // Open in read-only mode as this service should not write
-            });
-            await db.exec('PRAGMA journal_mode = WAL;');
-            return db;
-        } catch (e) {
-            console.warn(`[Backend] DB not found (attempt ${i + 1}/10). Waiting...`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-    }
-    
-    console.error(`[Backend] Timed out waiting for database at ${DB_PATH}.`);
-    throw new Error('Database not initialized by the main server yet.');
-}
-
 
 // Helper to create router instance based on config
 const createRouterInstance = (config) => {
@@ -100,34 +62,45 @@ const createRouterInstance = (config) => {
     return instance;
 };
 
-// Middleware to attach router config based on ID
+// Middleware to attach router config based on ID by calling the proxy server
 const getRouter = async (req, res, next) => {
     try {
         const routerId = req.params.routerId;
-        if (!routerId) return res.status(400).json({ message: 'Router ID missing' });
-        
-        const database = await getDb();
-        const router = await database.get('SELECT * FROM routers WHERE id = ?', [routerId]);
-        if (!router) {
-            console.warn(`[Backend] Router ID ${routerId} not found in DB.`);
-            return res.status(404).json({ message: 'Router not found' });
+        if (!routerId) {
+            return res.status(400).json({ message: 'Router ID missing' });
         }
         
-        req.router = router;
-        req.routerInstance = createRouterInstance(router);
+        const proxyUrl = 'http://localhost:3001'; 
+        const response = await axios.get(`${proxyUrl}/api/db/routers/${routerId}`, {
+            headers: {
+                'Authorization': req.headers.authorization
+            }
+        });
+        
+        const routerConfig = response.data;
+        if (!routerConfig) {
+             console.warn(`[Backend] Router ID ${routerId} not found via proxy.`);
+             return res.status(404).json({ message: 'Router not found' });
+        }
+        
+        req.router = routerConfig;
+        req.routerInstance = createRouterInstance(req.router);
         next();
     } catch (e) {
-        console.error("DB Error in getRouter:", e);
-        res.status(500).json({ message: 'Internal Server Error' });
+        console.error(`[Backend] Error fetching router config from proxy for ID ${req.params.routerId}:`, e.message);
+        if (e.response) {
+            return res.status(e.response.status).json({ message: e.response.data.message || 'Router not found' });
+        }
+        res.status(500).json({ message: 'Internal Server Error: Could not communicate with main panel service.' });
     }
 };
+
 
 // Helper for Legacy Writes
 const writeLegacySafe = async (client, query) => {
     try {
         return await client.write(query);
     } catch (error) {
-        // Suppress "empty response" errors which are common in node-routeros-v2 for empty lists
         if (error.errno === 'UNKNOWNREPLY' && error.message.includes('!empty')) {
             return [];
         }
@@ -149,23 +122,18 @@ const normalizeLegacyObject = (obj) => {
 
 // --- SPECIAL ENDPOINTS (must come before the generic proxy) ---
 
-// 0. Test Connection (does not use getRouter middleware as router isn't saved yet)
 app.post('/test/test-connection', async (req, res) => {
     const config = req.body;
     try {
         if (!config || !config.host || !config.user || !config.api_type) {
             return res.status(400).json({ success: false, message: 'Incomplete router configuration provided for testing.' });
         }
-
         const client = createRouterInstance(config);
-        
         if (config.api_type === 'legacy') {
             await client.connect();
-            // A quick command to verify we can interact
             await writeLegacySafe(client, ['/system/resource/print']);
             await client.close();
         } else {
-            // For REST, a simple GET request is enough to test connection and auth
             await client.get('/system/resource');
         }
         res.json({ success: true, message: 'Connection successful!' });
@@ -177,23 +145,18 @@ app.post('/test/test-connection', async (req, res) => {
     }
 });
 
-
-// 1. SPECIAL ENDPOINT: Interface Stats
-// This logic was previously in proxy/server.js but belongs here because Nginx routes /mt-api here.
 app.get('/:routerId/interface/stats', getRouter, async (req, res) => {
     try {
         if (req.router.api_type === 'legacy') {
             const client = req.routerInstance;
             await client.connect();
             try {
-                // For Legacy API, we need specific commands to get stats
                 const result = await writeLegacySafe(client, ['/interface/print', 'stats', 'detail', 'without-paging']);
                 res.json(result.map(normalizeLegacyObject));
             } finally {
                 await client.close();
             }
         } else {
-            // REST API (v7+)
             const response = await req.routerInstance.post('/interface/print', { 'stats': true, 'detail': true });
             res.json(response.data);
         }
@@ -203,16 +166,13 @@ app.get('/:routerId/interface/stats', getRouter, async (req, res) => {
     }
 });
 
-// 2. DHCP Client Update Endpoint
 app.post('/:routerId/dhcp-client/update', getRouter, async (req, res) => {
     const { 
         macAddress, address, customerInfo, 
         plan, downtimeDays, planType, graceDays, graceTime, 
         expiresAt: manualExpiresAt, contactNumber, email, speedLimit 
     } = req.body;
-
     try {
-        // Calculate Expiration Date/Time
         let expiresAt;
         if (manualExpiresAt) {
             expiresAt = new Date(manualExpiresAt);
@@ -229,7 +189,6 @@ app.post('/:routerId/dhcp-client/update', getRouter, async (req, res) => {
         } else {
             expiresAt = new Date(); 
         }
-
         const commentData = {
             customerInfo,
             contactNumber,
@@ -239,21 +198,14 @@ app.post('/:routerId/dhcp-client/update', getRouter, async (req, res) => {
             dueDateTime: expiresAt.toISOString(),
             planType: planType || 'prepaid'
         };
-
-        // Common Scheduler Script (RouterOS format)
         const schedName = `deactivate-dhcp-${address.replace(/\./g, '-')}`;
         const onEvent = `/ip firewall address-list remove [find where address="${address}" and list="authorized-dhcp-users"]; /ip firewall connection remove [find where src-address~"^${address}"]; :local leaseId [/ip dhcp-server lease find where address="${address}"]; if ([:len $leaseId] > 0) do={ /ip firewall address-list add address="${address}" list="pending-dhcp-users" timeout=1d comment="${macAddress}"; }`;
-        
         const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
         const rosDate = `${months[expiresAt.getMonth()]}/${String(expiresAt.getDate()).padStart(2,'0')}/${expiresAt.getFullYear()}`;
         const rosTime = expiresAt.toTimeString().split(' ')[0];
-
-        // --- API Interaction ---
         if (req.router.api_type === 'legacy') {
             const client = req.routerInstance;
             await client.connect();
-
-            // 1. Update Address List Comment
             const addressLists = await writeLegacySafe(client, ['/ip/firewall/address-list/print', '?address=' + address, '?list=authorized-dhcp-users']);
             if (addressLists.length > 0) {
                 await client.write('/ip/firewall/address-list/set', {
@@ -261,8 +213,6 @@ app.post('/:routerId/dhcp-client/update', getRouter, async (req, res) => {
                     comment: JSON.stringify(commentData)
                 });
             }
-
-            // 2. Update/Create Simple Queue (Speed Limit)
             if (speedLimit) {
                 const limitString = `${speedLimit}M/${speedLimit}M`;
                 const queues = await writeLegacySafe(client, ['/queue/simple/print', '?name=' + customerInfo]);
@@ -279,8 +229,6 @@ app.post('/:routerId/dhcp-client/update', getRouter, async (req, res) => {
                     });
                 }
             }
-            
-            // 3. Manage Scheduler
             const scheds = await writeLegacySafe(client, ['/system/scheduler/print', '?name=' + schedName]);
             if (scheds.length > 0) {
                 await client.write('/system/scheduler/remove', { '.id': scheds[0]['.id'] });
@@ -292,13 +240,9 @@ app.post('/:routerId/dhcp-client/update', getRouter, async (req, res) => {
                 interval: '0s',
                 'on-event': onEvent
             });
-
             await client.close();
         } else {
-            // REST API Logic
             const instance = req.routerInstance;
-
-            // 1. Update Address List
             try {
                 const alRes = await instance.get(`/ip/firewall/address-list?address=${address}&list=authorized-dhcp-users`);
                 if (alRes.data && alRes.data.length > 0) {
@@ -307,8 +251,6 @@ app.post('/:routerId/dhcp-client/update', getRouter, async (req, res) => {
                     });
                 }
             } catch (e) { console.warn("Address list update warning", e.message); }
-
-            // 2. Update Queue
             if (speedLimit) {
                  const limitString = `${speedLimit}M/${speedLimit}M`;
                  try {
@@ -324,8 +266,6 @@ app.post('/:routerId/dhcp-client/update', getRouter, async (req, res) => {
                     }
                  } catch (e) { console.error("Queue update error", e.message); }
             }
-
-            // 3. Update Scheduler
             try {
                 const sRes = await instance.get(`/system/scheduler?name=${schedName}`);
                 if (sRes.data && sRes.data.length > 0) {
@@ -341,7 +281,6 @@ app.post('/:routerId/dhcp-client/update', getRouter, async (req, res) => {
                 });
             } catch (e) { console.error("Scheduler update error", e.message); }
         }
-        
         res.json({ message: 'Updated successfully' });
     } catch (e) {
         console.error("Update Error:", e.message);
@@ -349,7 +288,6 @@ app.post('/:routerId/dhcp-client/update', getRouter, async (req, res) => {
     }
 });
 
-// 3. SPECIAL ENDPOINT: WAN Failover Status
 app.get('/:routerId/system/script/wan-failover-status', getRouter, async (req, res) => {
     try {
         let routes;
@@ -362,25 +300,20 @@ app.get('/:routerId/system/script/wan-failover-status', getRouter, async (req, r
             const response = await req.routerInstance.get('/ip/route');
             routes = response.data;
         }
-
         const monitoredRoutes = routes.filter(r => r['check-gateway']);
         if (monitoredRoutes.length === 0) {
             return res.json({ enabled: false, message: 'No routes with check-gateway found.' });
         }
-
-        // If any monitored route is enabled, we consider the system enabled.
         const isEnabled = monitoredRoutes.some(r => r.disabled === 'false' || !r.disabled);
         res.json({ enabled: isEnabled });
-
     } catch (e) {
         console.error("WAN Failover Status Error:", e.message);
         res.status(500).json({ message: e.message });
     }
 });
 
-// 4. SPECIAL ENDPOINT: Configure WAN Failover
 app.post('/:routerId/system/script/configure-wan-failover', getRouter, async (req, res) => {
-    const { enabled } = req.body; // true to enable, false to disable
+    const { enabled } = req.body;
     try {
         let routesToModify;
         if (req.router.api_type === 'legacy') {
@@ -388,7 +321,6 @@ app.post('/:routerId/system/script/configure-wan-failover', getRouter, async (re
             await client.connect();
             const routes = await writeLegacySafe(client, ['/ip/route/print', '?check-gateway']);
             routesToModify = routes.filter(r => r['check-gateway']);
-            
             for (const route of routesToModify) {
                 await client.write('/ip/route/set', {
                     '.id': route['.id'],
@@ -396,10 +328,9 @@ app.post('/:routerId/system/script/configure-wan-failover', getRouter, async (re
                 });
             }
             await client.close();
-        } else { // REST API
+        } else {
             const response = await req.routerInstance.get('/ip/route');
             routesToModify = response.data.filter(r => r['check-gateway']);
-
             for (const route of routesToModify) {
                 await req.routerInstance.patch(`/ip/route/${route['.id']}`, {
                     disabled: !enabled
@@ -413,39 +344,29 @@ app.post('/:routerId/system/script/configure-wan-failover', getRouter, async (re
     }
 });
 
-// 5. Generic Proxy Handler for all other MikroTik calls
 app.all('/:routerId/:endpoint(*)', getRouter, async (req, res) => {
     const { endpoint } = req.params;
     const method = req.method;
     const body = req.body;
-
     try {
         if (req.router.api_type === 'legacy') {
              const client = req.routerInstance;
              await client.connect();
-            
              const cmd = '/' + endpoint; 
-            
              if (method === 'POST' && body) {
-                  // For legacy add/set/remove commands
                   await client.write(cmd, body);
                   res.json({ message: 'Command executed' });
              } else {
-                  // For legacy print commands
                   const data = await writeLegacySafe(client, [cmd]);
                   res.json(data.map(normalizeLegacyObject));
              }
              await client.close();
         } else {
-            // REST API Proxy
             const instance = req.routerInstance;
             let finalEndpoint = endpoint;
-            
-            // For GET requests, REST API uses the base path to list resources, not '/print'
             if (method === 'GET' && finalEndpoint.endsWith('/print')) {
                 finalEndpoint = finalEndpoint.replace(/\/print$/, '');
             }
-            
             const response = await instance.request({
                 method: method,
                 url: `/${finalEndpoint}`,
