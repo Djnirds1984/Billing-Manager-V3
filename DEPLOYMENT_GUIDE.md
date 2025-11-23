@@ -54,8 +54,6 @@ You should see version numbers like `v20.x.x` and `10.x.x`.
 sudo npm install -g pm2
 ```
 
--   **Gemini API Key (Optional)**: For the "AI Scripting" feature, get a key from [Google AI Studio](https://aistudio.google.com/app/apikey).
-
 ## Step 1: Prepare the Directory
 
 1.  **Create the Directory:**
@@ -83,13 +81,19 @@ sudo npm install -g pm2
     cd Mikrotik-Billing-Manager
     ```
 
-3.  **Install Dependencies:**
-    Run this command from the project's **root directory** to install all server dependencies.
+3.  **Install Dependencies & Build Frontend:**
+    Run these commands from the project's **root directory**.
     ```bash
+    # Install dependencies for the main server
     npm install --prefix proxy
+    
+    # Install dev dependencies, build the UI, then remove dev dependencies
+    npm install
+    npm run build
+    npm prune --production
     ```
 
-4.  **Configure Gemini API Key:**
+4.  **Configure Gemini API Key (Optional):**
     Edit the `env.js` file and paste your Gemini API key.
     ```bash
     nano env.js

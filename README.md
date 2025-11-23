@@ -115,11 +115,16 @@ This is the recommended way to run the panel in a production environment in your
     cd Mikrotik-Billing-Manager
     ```
 
-2.  **Install Dependencies:**
-    Run this command from the project's **root directory** to install all necessary packages for the server.
+2.  **Install Dependencies & Build Frontend:**
+    Run these commands from the project's **root directory**.
     ```bash
     # Install dependencies for the main server
     npm install --prefix proxy
+    
+    # Install dev dependencies, build the UI, then remove dev dependencies
+    npm install
+    npm run build
+    npm prune --production
     ```
 
 3.  **Start with PM2:**
@@ -163,9 +168,12 @@ You can update the panel directly from the "Updater" page in the UI. If you need
     ```bash
     git pull
     ```
-3.  **Re-install dependencies** in case they have changed:
+3.  **Re-install dependencies and rebuild the frontend:**
     ```bash
     npm install --prefix proxy
+    npm install
+    npm run build
+    npm prune --production
     ```
 4.  **Restart the server** to apply the updates:
     ```bash
