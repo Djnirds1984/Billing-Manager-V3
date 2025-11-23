@@ -48,6 +48,13 @@ async function initDb() {
     key TEXT PRIMARY KEY,
     value_json TEXT
   )`);
+  const row = await db.get('SELECT COUNT(*) as c FROM users');
+  if ((row?.c || 0) === 0) {
+    const id = `user_${Date.now()}`;
+    const hash = await bcrypt.hash('admin123', 10);
+    await db.run('INSERT INTO users (id, username, password_hash, role) VALUES (?, ?, ?, ?)', [id, 'superadmin', hash, 'admin']);
+    console.log('Initialized default superadmin user with username "superadmin"');
+  }
 }
 function logRequest(req, res, next) {
   const start = Date.now();
@@ -91,7 +98,8 @@ async function startServer() {
       const hash = await bcrypt.hash(password, 10);
       await db.run('INSERT INTO users (id, username, password_hash, role) VALUES (?, ?, ?, ?)', [id, username, hash, 'admin']);
       const token = jwt.sign({ sub: id, username }, SECRET_KEY, { expiresIn: '7d' });
-      res.json({ token });
+      const user = { id, username, role: { id: 'admin', name: 'admin' }, permissions: ['*:*'] };
+      res.json({ token, user });
     } catch (e) {
       res.status(500).json({ message: e.message });
     }
@@ -105,13 +113,57 @@ async function startServer() {
       const ok = await bcrypt.compare(password, user.password_hash);
       if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
       const token = jwt.sign({ sub: user.id, username }, SECRET_KEY, { expiresIn: '7d' });
-      res.json({ token });
+      const payloadUser = { id: user.id, username: user.username, role: { id: user.role || 'admin', name: user.role || 'admin' }, permissions: ['*:*'] };
+      res.json({ token, user: payloadUser });
     } catch (e) {
       res.status(500).json({ message: e.message });
     }
   });
   authRouter.get('/status', protect, async (req, res) => {
-    res.json({ authenticated: true });
+    try {
+      const h = req.headers.authorization || '';
+      const token = h.startsWith('Bearer ') ? h.slice(7) : null;
+      const decoded = jwt.verify(token, SECRET_KEY);
+      const dbUser = await db.get('SELECT * FROM users WHERE id = ?', [decoded.sub]);
+      if (!dbUser) return res.status(401).json({ message: 'Unauthorized' });
+      const payloadUser = { id: dbUser.id, username: dbUser.username, role: { id: dbUser.role || 'admin', name: dbUser.role || 'admin' }, permissions: ['*:*'] };
+      res.json(payloadUser);
+    } catch (e) {
+      res.status(401).json({ message: 'Unauthorized' });
+    }
+  });
+  authRouter.post('/logout', protect, async (req, res) => {
+    res.json({ message: 'Logged out' });
+  });
+  authRouter.post('/change-superadmin-password', protect, async (req, res) => {
+    try {
+      const { newPassword } = req.body || {};
+      if (!newPassword || newPassword.length < 6) return res.status(400).json({ message: 'Invalid new password' });
+      const h = req.headers.authorization || '';
+      const token = h.startsWith('Bearer ') ? h.slice(7) : null;
+      const decoded = jwt.verify(token, SECRET_KEY);
+      const superUser = await db.get('SELECT * FROM users WHERE username = ?', ['superadmin']);
+      const targetId = superUser ? superUser.id : decoded.sub;
+      const hash = await bcrypt.hash(newPassword, 10);
+      await db.run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, targetId]);
+      res.json({ message: 'Password updated' });
+    } catch (e) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+  authRouter.get('/security-questions/:username', async (req, res) => {
+    res.json({ questions: [] });
+  });
+  authRouter.post('/reset-password', async (req, res) => {
+    try {
+      const { username, newPassword } = req.body || {};
+      if (!username || !newPassword) return res.status(400).json({ message: 'Missing fields' });
+      const user = await db.get('SELECT * FROM users WHERE username = ?', [username]);
+      if (!user) return res.status(404).json({ message: 'User not found' });
+      const hash = await bcrypt.hash(newPassword, 10);
+      await db.run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, user.id]);
+      res.json({ message: 'Password reset' });
+    } catch (e) { res.status(500).json({ message: e.message }); }
   });
   app.use('/api/auth', authRouter);
   const dbRouter = express.Router();
