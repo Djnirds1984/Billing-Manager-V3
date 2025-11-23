@@ -183,14 +183,16 @@ You can update the panel directly from the "Updater" page in the UI. If you need
 
 ## Troubleshooting
 
-### API Requests are Failing
+### API Requests are Failing or Server Won't Start
 
-If you can see the UI but data from the router isn't loading, it's likely an issue with the API backend server.
+If you can see the UI but data from the router isn't loading, or if `pm2 logs` shows `Cannot find module`, it's likely an issue with the API backend server.
 
 -   **Check the logs:** Run `pm2 logs mikrotik-api-backend`. Look for connection errors or crashes.
 -   **Verify Router Config:** In the "Routers" page, double-check that the IP address, username, password, and **port** for your router are correct.
 -   **Firewall:** Ensure your router's firewall is not blocking access to the API port from the Orange Pi's IP address.
-
-### AI Features Not Working
-
-If you get an error about an "Invalid API Key", ensure you have correctly pasted your Google Gemini API key into the `env.js` file and have saved the changes. You may need to restart the `mikrotik-manager` process (`pm2 restart mikrotik-manager`) for the change to take effect.
+-   **Renamed Project Folder:** If you renamed the project folder (e.g., from `Mikrotik-Billing-Manager` to something else), you **must** update `pm2`. `pm2` saves the full path to your scripts, so it will still be looking in the old, non-existent folder.
+    **To fix this:**
+    1.  Navigate into your **new** project folder (`cd /path/to/your/new-folder-name`).
+    2.  Run `pm2 delete all` to clear the old processes.
+    3.  Run the `pm2 start` commands again from Step 3 of the installation guide.
+    4.  Run `pm2 save` to make the new paths permanent.

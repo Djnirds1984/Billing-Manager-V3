@@ -221,3 +221,36 @@ You can now access your application directly by navigating to your Orange Pi's I
 
 `http://<your_orange_pi_ip>`
 (e.g., `http://192.168.1.10`)
+
+## Troubleshooting
+
+### Error: `Cannot find module '/var/www/html/Mikrotik-Billing-Manager/...'`
+
+This error is common if you rename the project directory *after* starting the application with `pm2`. The `pm2` service saves the full, absolute path to your application's start file and does not automatically update if you move or rename the parent folder.
+
+**Solution:**
+
+1.  **Navigate to your new project directory:**
+    For example, if you renamed the folder to `Billing-Manager-V3`:
+    ```bash
+    cd /var/www/html/Billing-Manager-V3
+    ```
+
+2.  **Delete the old PM2 processes:**
+    This command removes the old, broken process entries from `pm2`.
+    ```bash
+    pm2 delete all
+    ```
+
+3.  **Restart the applications from the correct directory:**
+    `pm2` will now register the new, correct paths.
+    ```bash
+    pm2 start ./proxy/server.js --name mikrotik-manager
+    pm2 start ./api-backend/server.js --name mikrotik-api-backend
+    ```
+
+4.  **Save the new process list:**
+    This makes the new paths persistent across server reboots.
+    ```bash
+    pm2 save
+    ```
