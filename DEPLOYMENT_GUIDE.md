@@ -83,7 +83,7 @@ sudo npm install -g pm2
     Change the ownership of the newly cloned project directory to your current user. This is **crucial** as it allows you to manage the application (install dependencies, run PM2) without needing `sudo` for every command.
     ```bash
     # Replace $USER with your actual username if it's not detected correctly
-    sudo chown -R root:root /var/www/html/Mikrotik-Billing-Manager
+    sudo chown -R $USER:$USER /var/www/html/Mikrotik-Billing-Manager
     ```
 
 3.  **Navigate into Project Directory:**
