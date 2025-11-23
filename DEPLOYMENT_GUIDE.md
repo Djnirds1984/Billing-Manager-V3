@@ -84,7 +84,7 @@ sudo npm install -g pm2
 3.  **Install Dependencies & Build Frontend:**
     Run these commands from the project's **root directory**.
     ```bash
-    # Install dependencies for the main server
+    # Install dependencies for the unified server
     npm install --prefix proxy
     
     # Install dev dependencies, build the UI, then remove dev dependencies

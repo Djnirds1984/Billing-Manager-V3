@@ -1,12 +1,12 @@
 {
-  "name": "mikrotik-proxy-frontend",
-  "version": "1.6.0",
-  "description": "Frontend server for the Mikrotik Billling Management by AJC",
+  "name": "mikrotik-manager-server",
+  "version": "2.0.0",
+  "description": "Unified backend server for the Mikrotik Billling Management by AJC",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "author": "",
+  "author": "AJC",
   "license": "ISC",
   "dependencies": {
     "@vscode/sqlite3": "^5.1.1",
@@ -14,7 +14,6 @@
     "axios": "^1.7.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
-    "esbuild": "^0.25.12",
     "express": "^4.19.2",
     "fs-extra": "^11.2.0",
     "jsonwebtoken": "^9.0.2",

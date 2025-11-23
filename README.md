@@ -7,71 +7,19 @@ A modern, responsive web dashboard for managing your MikroTik routers, specifica
 ## Features
 
 -   **Dashboard & Monitoring:** Real-time system info, resource usage (CPU/Memory), and live interface traffic graphs for both the panel host and the selected MikroTik router.
-
--   **AI Script Assistant:** Powered by Google Gemini, generates RouterOS terminal scripts from plain English descriptions. Includes specialized assistants for Multi-WAN (PCC/PBR) and Hotspot setups.
-
--   **PPPoE Suite:** Full lifecycle management for PPPoE services, including:
-    -   **Users (Secrets):** Create, edit, and delete PPPoE user accounts.
-    -   **Profiles:** Manage speed limits and IP pools for different user tiers.
-    -   **Servers:** Configure and manage PPPoE server instances on router interfaces.
-
--   **DHCP Captive Portal:** A complete MAC-based "activate before internet" system.
-    -   **One-Click Installer:** Automatically deploys all necessary firewall rules, scripts, and address lists.
-    -   **Client Management:** View connected devices, distinguish between `pending` and `active` clients, and manage their state.
-    -   **Billing Integration:** Create dedicated billing plans (e.g., 30 days for $10), process payments, and automatically set expiration dates.
-    -   **Portal Page Editor:** A live HTML editor to customize the page that pending users see, complete with a live preview.
-
--   **Hotspot Management:**
-    -   Monitor active users and all connected device hosts.
-    -   Full CRUD management for Hotspot Server Profiles and User Profiles.
-    -   **Vendo Integration:** Automatically detects and provides an embedded management interface for NodeMCU-based "Piso WiFi" vendo machines.
-    -   **Login Page Editor:** Browse the router's file system and edit Hotspot login pages directly from the UI.
-    -   **Setup Assistant:** A guided wizard to create new Hotspot instances, similar to the WinBox setup tool.
-
--   **Billing & Sales System:**
-    -   Create distinct billing plans for both PPPoE and DHCP Portal services.
-    -   Process payments, apply pro-rated discounts for downtime, and automatically schedule user deactivation on expiry.
-    -   Generate and print professional, branded receipts for every transaction.
-    -   A filterable **Sales Report** tracks all transactions and provides a summary of revenue, sales, and discounts.
-
--   **Inventory & Expenses:**
-    -   A simple stock and inventory manager to keep track of physical items (e.g., antennas, routers, cables).
-    -   An integrated expense tracker for basic accounting and financial overview.
-
--   **Payroll Management:**
-    -   Manage a list of employees, including their personal information, role, and salary details.
-    -   Track Philippine-specific government benefits (SSS, PhilHealth, Pag-IBIG).
-    -   Includes a Daily Time Record (DTR) manager to log employee work hours for accurate payroll calculation.
-
--   **Comprehensive Network Tools:**
-    -   **Firewall:** A user-friendly interface for managing Filter, NAT, and Mangle rules.
-    -   **IP Services:** Manage IP Routes, VLANs, IP Pools, and DHCP Servers.
-    -   **WAN Management:** A dedicated interface for monitoring and managing WAN failover routes.
-
--   **Remote Access & System Administration:**
-    -   **ZeroTier & Ngrok:** Integrated management for both services to easily configure secure remote access to your panel.
-    -   **Panel Updater:** One-click updates from a Git repository, with automatic application backups and rollback capability.
-    -   **Database Management:** Create, download, and restore backups of the panel's configuration database.
-    -   **Log Viewer:** A centralized place to view logs from the router, the panel's UI and API servers, and Nginx.
-    -   **File Editor:** A general-purpose tool to browse the MikroTik router's filesystem and edit text-based files.
-
--   **Multi-User & Security:**
-    -   Features a robust role-based access control (RBAC) system.
-    -   Create multiple user accounts with distinct "Administrator" or "Employee" roles.
-    -   Customize permissions for roles to restrict access to sensitive features like deleting sales records.
-    -   Includes a secure account recovery system using security questions.
-
--   **Customization:**
-    -   **Company Branding:** Set your company name, logo, and contact details, which automatically appear on printable receipts.
-    -   **Theming & Localization:** Switch between light/dark modes, multiple color themes, and several languages for the UI.
+-   **AI Script Assistant:** Powered by Google Gemini, generates RouterOS terminal scripts from plain English descriptions.
+-   **Full PPPoE & DHCP Suite:** Complete lifecycle management for user authentication, billing, and services.
+-   **Hotspot Management:** Monitor active users, manage profiles, and edit login pages directly from the UI.
+-   **Billing, Sales & Inventory:** A comprehensive suite for managing plans, processing payments, printing receipts, tracking sales, and managing stock.
+-   **And much more:** See the full feature list in the `DEPLOYMENT_GUIDE.md`.
 
 ## Technical Architecture
 
 This project uses a **single-server architecture** for simplicity and robustness. A single Node.js/Express server is responsible for:
 
-1.  **Serving the Frontend UI:** Delivers all the static HTML, CSS, and JavaScript that make up the user interface.
-2.  **Handling Panel APIs:** Manages database operations for users, settings, sales records, etc.
-3.  **Proxying MikroTik APIs:** Acts as a secure backend that communicates directly with your MikroTik routers via their official APIs.
+1.  **Serving the Frontend UI:** Delivers all the static HTML, CSS, and JavaScript.
+2.  **Handling Panel APIs:** Manages the database for users, settings, sales records, etc.
+3.  **Proxying MikroTik APIs:** Acts as a secure backend that communicates directly with your MikroTik routers.
 
 This unified model simplifies deployment and eliminates potential communication issues between multiple backend processes. The server runs on port **3001**.
 
@@ -79,7 +27,7 @@ This unified model simplifies deployment and eliminates potential communication 
 
 ## Deployment Guide (Orange Pi / Debian)
 
-This is the recommended way to run the panel in a production environment in your user's home directory.
+This is the recommended way to run the panel in a production environment.
 
 ### 1. Prerequisites
 
@@ -88,26 +36,16 @@ This is the recommended way to run the panel in a production environment in your
 -   **Essential Tools:** `git`, `pm2`, and `build-essential`.
     ```bash
     sudo apt-get update
-    sudo apt-get install -y git build-essential
+    sudo apt-get install -y git build-essential curl
+    # Install Node.js v20
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+    # Install PM2 process manager
     sudo npm install -g pm2
     ```
--   **(Optional) Gemini API Key**: For the "AI Scripting" feature to work, you need a Google Gemini API key.
-    1.  Get your key from [Google AI Studio](https://aistudio.google.com/app/apikey).
-    2.  Open the `env.js` file and replace `"YOUR_GEMINI_API_KEY_HERE"` with your actual key.
+-   **(Optional) Gemini API Key**: For AI features, get a key from [Google AI Studio](https://aistudio.google.com/app/apikey) and paste it into the `env.js` file.
 
-### 2. MikroTik Router Configuration
-
--   **Enable API:** This panel supports both the modern **REST API** (RouterOS v7+) and the **legacy API** (RouterOS v6).
-    -   **REST API (v7+):** Enable the `www` or `www-ssl` service. The default port for `www` is 80 and for `www-ssl` is 443.
-    -   **Legacy API (v6):** Enable the `api` or `api-ssl` service. The default port for `api` is 8728 and for `api-ssl` is 8729.
-    -   It is recommended to create a dedicated user group with appropriate permissions for the API user.
-
--   **Enable ZeroTier Package (Optional):** For the ZeroTier Management feature to work, ensure the `zerotier` package is installed and enabled on your router.
-    ```routeros
-    /zerotier set enabled=yes
-    ```
-
-### 3. Installation & Startup
+### 2. Installation & Startup
 
 1.  **Clone the Repository:**
     ```bash
@@ -118,22 +56,22 @@ This is the recommended way to run the panel in a production environment in your
 2.  **Install Dependencies & Build Frontend:**
     Run these commands from the project's **root directory**.
     ```bash
-    # Install dependencies for the main server
+    # Install dependencies for the unified server
     npm install --prefix proxy
     
-    # Install dev dependencies, build the UI, then remove dev dependencies
+    # Install build tools, build the UI, then remove dev dependencies
     npm install
     npm run build
     npm prune --production
     ```
 
 3.  **Start with PM2:**
-    This command starts the server as a persistent, named process.
+    This command starts the single server as a persistent, named process.
     ```bash
     # First, stop and delete any old running processes to ensure a clean start.
     pm2 delete all
 
-    # Start the unified server (runs on localhost:3001)
+    # Start the unified server (this runs everything on localhost:3001)
     pm2 start ./proxy/server.js --name mikrotik-manager
     ```
 
@@ -150,7 +88,7 @@ This is the recommended way to run the panel in a production environment in your
 
 ## Advanced Deployment with Nginx
 
-For a more robust setup, you can run the panel on the standard web port 80 using Nginx as a reverse proxy. This is the recommended method for a production server.
+For a more robust setup, you can run the panel on the standard web port 80 using Nginx as a reverse proxy.
 
 **[See the full Nginx Deployment Guide here](./DEPLOYMENT_GUIDE.md)**
 
@@ -184,14 +122,12 @@ You can update the panel directly from the "Updater" page in the UI. If you need
 
 ## Troubleshooting
 
-### API Requests are Failing or Server Won't Start
+### Error: `Cannot find module '/var/www/html/Mikrotik-Billing-Manager/...'`
 
--   **Check the logs:** Run `pm2 logs mikrotik-manager`. Look for connection errors or crashes.
--   **Verify Router Config:** In the "Routers" page, double-check that the IP address, username, password, and **port** for your router are correct.
--   **Firewall:** Ensure your router's firewall is not blocking access to the API port from the Orange Pi's IP address.
--   **Renamed Project Folder:** If you renamed the project folder (e.g., from `Mikrotik-Billing-Manager` to something else), you **must** update `pm2`. `pm2` saves the full path to your scripts, so it will still be looking in the old, non-existent folder.
-    **To fix this:**
-    1.  Navigate into your **new** project folder (`cd /path/to/your/new-folder-name`).
-    2.  Run `pm2 delete all` to clear the old processes.
-    3.  Run the `pm2 start` command again from Step 3 of the installation guide.
-    4.  Run `pm2 save` to make the new path permanent.
+This error occurs if you rename the project directory *after* starting the application with `pm2`. The `pm2` service saves the full path and doesn't update automatically.
+
+**To fix this:**
+1.  Navigate into your **new** project folder (e.g., `cd /path/to/your/new-folder-name`).
+2.  Run `pm2 delete all` to clear the old processes.
+3.  Run the `pm2 start ./proxy/server.js --name mikrotik-manager` command again.
+4.  Run `pm2 save` to make the new path permanent.
