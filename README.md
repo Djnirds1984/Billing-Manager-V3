@@ -67,12 +67,13 @@ A modern, responsive web dashboard for managing your MikroTik routers, specifica
 
 ## Technical Architecture
 
-To improve stability and reliability, this project uses a **two-process architecture**.
+This project uses a **single-server architecture** for simplicity and robustness. A single Node.js/Express server is responsible for:
 
-1.  **Frontend UI Server (`mikrotik-manager`):** This is a lightweight Node.js/Express server. Its primary job is to serve the static frontend files (HTML, CSS, JavaScript) that make up the user interface. It runs on port **3001**.
-2.  **API Backend Server (`mikrotik-api-backend`):** This is a separate, dedicated Node.js/Express server that acts as a proxy to the official **MikroTik REST API**. It handles all communication with your routers. This separation means that if an API request fails, it will not crash the user interface. It runs on port **3002**.
+1.  **Serving the Frontend UI:** Delivers all the static HTML, CSS, and JavaScript that make up the user interface.
+2.  **Handling Panel APIs:** Manages database operations for users, settings, sales records, etc.
+3.  **Proxying MikroTik APIs:** Acts as a secure backend that communicates directly with your MikroTik routers via their official APIs.
 
-This two-process model provides a robust separation of concerns, ensuring the application remains stable and responsive.
+This unified model simplifies deployment and eliminates potential communication issues between multiple backend processes. The server runs on port **3001**.
 
 ---
 
@@ -115,31 +116,24 @@ This is the recommended way to run the panel in a production environment in your
     ```
 
 2.  **Install Dependencies:**
-    Run these commands from the project's **root directory** to install packages for both servers.
+    Run this command from the project's **root directory** to install all necessary packages for the server.
     ```bash
-    # Install for UI Server (proxy)
+    # Install dependencies for the main server
     npm install --prefix proxy
-   
-    # Install for API Backend Server
-    npm install --prefix api-backend
     ```
 
 3.  **Start with PM2:**
-    These commands start both servers as persistent, named processes.
+    This command starts the server as a persistent, named process.
     ```bash
     # First, stop and delete any old running processes to ensure a clean start.
-    # This only removes apps from PM2's list, it does NOT delete your files.
     pm2 delete all
 
-    # Start the UI server (port 3001)
+    # Start the unified server (runs on localhost:3001)
     pm2 start ./proxy/server.js --name mikrotik-manager
-
-    # Start the API backend (port 3002)
-    pm2 start ./api-backend/server.js --name mikrotik-api-backend
     ```
 
 4.  **Save the Process List:**
-    This ensures `pm2` will automatically restart your applications on server reboot.
+    This ensures `pm2` will automatically restart your application on server reboot.
     ```bash
     pm2 save
     ```
@@ -172,9 +166,8 @@ You can update the panel directly from the "Updater" page in the UI. If you need
 3.  **Re-install dependencies** in case they have changed:
     ```bash
     npm install --prefix proxy
-    npm install --prefix api-backend
     ```
-4.  **Restart the servers** to apply the updates:
+4.  **Restart the server** to apply the updates:
     ```bash
     pm2 restart all
     ```
@@ -185,14 +178,12 @@ You can update the panel directly from the "Updater" page in the UI. If you need
 
 ### API Requests are Failing or Server Won't Start
 
-If you can see the UI but data from the router isn't loading, or if `pm2 logs` shows `Cannot find module`, it's likely an issue with the API backend server.
-
--   **Check the logs:** Run `pm2 logs mikrotik-api-backend`. Look for connection errors or crashes.
+-   **Check the logs:** Run `pm2 logs mikrotik-manager`. Look for connection errors or crashes.
 -   **Verify Router Config:** In the "Routers" page, double-check that the IP address, username, password, and **port** for your router are correct.
 -   **Firewall:** Ensure your router's firewall is not blocking access to the API port from the Orange Pi's IP address.
 -   **Renamed Project Folder:** If you renamed the project folder (e.g., from `Mikrotik-Billing-Manager` to something else), you **must** update `pm2`. `pm2` saves the full path to your scripts, so it will still be looking in the old, non-existent folder.
     **To fix this:**
     1.  Navigate into your **new** project folder (`cd /path/to/your/new-folder-name`).
     2.  Run `pm2 delete all` to clear the old processes.
-    3.  Run the `pm2 start` commands again from Step 3 of the installation guide.
-    4.  Run `pm2 save` to make the new paths permanent.
+    3.  Run the `pm2 start` command again from Step 3 of the installation guide.
+    4.  Run `pm2 save` to make the new path permanent.

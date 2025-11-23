@@ -65,43 +65,31 @@ sudo npm install -g pm2
     ```
 
 2.  **Set Permissions:**
-    Ensure the web root directory is owned by the `root` user, which is a common security practice.
+    Change ownership of the web root to your current user so you can clone into it without `sudo`.
     ```bash
-    sudo chown -R root:root /var/www/html
+    sudo chown -R $USER:$USER /var/www/html
     ```
 
 ## Step 2: Clone and Install the Application
 
-1.  **Navigate and Clone as Root:**
-    Clone the repository into the web root directory. You will need `sudo` because the directory is owned by root.
+1.  **Navigate and Clone:**
     ```bash
     cd /var/www/html
-    sudo git clone https://github.com/Djnirds1984/Mikrotik-Billing-Manager.git
+    git clone https://github.com/Djnirds1984/Mikrotik-Billing-Manager.git
     ```
 
-2.  **Set Project Directory Permissions:**
-    Change the ownership of the newly cloned project directory to your current user. This is **crucial** as it allows you to manage the application (install dependencies, run PM2) without needing `sudo` for every command.
-    ```bash
-    # Replace $USER with your actual username if it's not detected correctly
-    sudo chown -R $USER:$USER /var/www/html/Mikrotik-Billing-Manager
-    ```
-
-3.  **Navigate into Project Directory:**
+2.  **Navigate into Project Directory:**
     ```bash
     cd Mikrotik-Billing-Manager
     ```
 
-4.  **Install Dependencies:**
-    Run these commands from the project's **root directory** (`/var/www/html/Mikrotik-Billing-Manager`).
+3.  **Install Dependencies:**
+    Run this command from the project's **root directory** to install all server dependencies.
     ```bash
-    # Install for UI Server (proxy)
     npm install --prefix proxy
-   
-    # Install for API Backend Server
-    npm install --prefix api-backend
     ```
 
-5.  **Configure Gemini API Key:**
+4.  **Configure Gemini API Key:**
     Edit the `env.js` file and paste your Gemini API key.
     ```bash
     nano env.js
@@ -110,147 +98,107 @@ sudo npm install -g pm2
 
 ## Step 3: Start the Application with PM2
 
-These commands will run your application as a background service.
+This command will run your application as a single background service.
 
-1.  **Start Both Servers:**
+1.  **Start the Server:**
     ```bash
     # Ensure any old versions are stopped
     pm2 delete all
 
-    # Start the UI server (runs on localhost:3001)
+    # Start the unified server (runs on localhost:3001)
     pm2 start ./proxy/server.js --name mikrotik-manager
-
-    # Start the API backend (runs on localhost:3002)
-    pm2 start ./api-backend/server.js --name mikrotik-api-backend
     ```
 
 2.  **Save the Process List:**
-    This ensures `pm2` automatically restarts the apps on server reboot.
+    This ensures `pm2` automatically restarts the app on server reboot.
     ```bash
     pm2 save
     ```
 
 ## Step 4: Configure Nginx as a Reverse Proxy
 
-Nginx will listen on the public port 80 and forward traffic to the correct Node.js server.
+Nginx will listen on the public port 80 and forward all traffic to the Node.js server.
 
 1.  **Edit the Default Configuration File:**
-    Instead of creating a new file, edit the `default` Nginx configuration file.
     ```bash
     sudo nano /etc/nginx/sites-available/default
     ```
 
 2.  **Paste the Following Configuration:**
-    Ensure the **entire contents** of the file are replaced with this structure. This configuration routes traffic for the main app, the API, and the WebSocket terminal, and includes important headers to ensure the application works correctly behind a proxy.
+    Replace the **entire contents** of the file with this simplified configuration. It routes all requests, including API calls and WebSockets, to the single `mikrotik-manager` service.
 
     ```nginx
     server {
         listen 80;
         server_name <your_server_ip_or_domain>; # IMPORTANT: Replace with your server's IP or domain name
-        client_max_body_size 10m; # Allow larger file uploads for logos, etc.
+        client_max_body_size 10m;
 
-        # Main application UI and its APIs (port 3001)
+        # Forward all traffic to the unified Node.js server on port 3001
         location / {
             proxy_pass http://localhost:3001;
             proxy_http_version 1.1;
             
-            # Add Standard Proxy Headers
+            # Standard Proxy Headers
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
             
-            # WebSockets/Keep-Alive Headers
+            # Headers required for WebSockets to function correctly
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
             proxy_cache_bypass $http_upgrade;
-        }
-
-        # MikroTik API Backend (port 3002)
-        location /mt-api/ {
-            proxy_pass http://localhost:3002/; # <-- Trailing slash is important!
-            proxy_http_version 1.1;
-            proxy_set_header Host $host;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
-            proxy_cache_bypass $http_upgrade;
-        }
-
-        # WebSocket for the Terminal (port 3002)
-        location /ws/ {
-            proxy_pass http://localhost:3002/; # <-- Trailing slash is important!
-            proxy_http_version 1.1;
-            proxy_set_header Host $host;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
         }
     }
     ```
     Save and exit the file (`Ctrl+X`, then `Y`, then `Enter`).
 
 3.  **Enable the Site and Restart Nginx:**
-    This is a crucial three-step verification process.
-
     ```bash
-    # 1. Ensure the site configuration is enabled by creating a symbolic link.
-    # If this command says "File exists", that is okay and you can ignore it.
-    sudo ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
-
-    # 2. Test configuration syntax and logic.
+    # Test configuration syntax
     sudo nginx -t
 
-    # 3. Restart Nginx to apply the new configuration.
+    # Restart Nginx to apply the new configuration
     sudo systemctl restart nginx
-
-    # 4. Verify that Nginx is now listening on port 80.
-    # The output of this command MUST show 'nginx' listening on ':::80' or '0.0.0.0:80'.
-    sudo ss -tulpn | grep :80
     ```
 
-4.  **Restart PM2 Applications:**
-    The final step is to restart your backend applications so they recognize and use the new proxy headers you configured in Nginx.
+4.  **Restart PM2 Application:**
+    Restart the backend application to ensure it uses the new proxy headers from Nginx.
     ```bash
     pm2 restart all
     ```
 
 ## Step 5: Access Your Panel
 
-You can now access your application directly by navigating to your Orange Pi's IP address in your browser:
+You can now access your application directly by navigating to your server's IP address in your browser:
 
-`http://<your_orange_pi_ip>`
+`http://<your_server_ip>`
 (e.g., `http://192.168.1.10`)
 
 ## Troubleshooting
 
 ### Error: `Cannot find module '/var/www/html/Mikrotik-Billing-Manager/...'`
 
-This error is common if you rename the project directory *after* starting the application with `pm2`. The `pm2` service saves the full, absolute path to your application's start file and does not automatically update if you move or rename the parent folder.
+This error occurs if you rename the project directory *after* starting the application with `pm2`. The `pm2` service saves the full path and doesn't update automatically.
 
 **Solution:**
 
 1.  **Navigate to your new project directory:**
-    For example, if you renamed the folder to `Billing-Manager-V3`:
     ```bash
-    cd /var/www/html/Billing-Manager-V3
+    cd /var/www/html/your-new-folder-name
     ```
 
-2.  **Delete the old PM2 processes:**
-    This command removes the old, broken process entries from `pm2`.
+2.  **Delete the old PM2 process:**
     ```bash
     pm2 delete all
     ```
 
-3.  **Restart the applications from the correct directory:**
-    `pm2` will now register the new, correct paths.
+3.  **Restart the application from the correct directory:**
     ```bash
     pm2 start ./proxy/server.js --name mikrotik-manager
-    pm2 start ./api-backend/server.js --name mikrotik-api-backend
     ```
 
 4.  **Save the new process list:**
-    This makes the new paths persistent across server reboots.
     ```bash
     pm2 save
     ```
