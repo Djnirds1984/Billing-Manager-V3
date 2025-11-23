@@ -73,12 +73,12 @@ sudo npm install -g pm2
 1.  **Navigate and Clone:**
     ```bash
     cd /var/www/html
-    git clone https://github.com/Djnirds1984/Mikrotik-Billing-Manager.git
+    git clone https://github.com/Djnirds1984/Billing-Manager-V3.git
     ```
 
 2.  **Navigate into Project Directory:**
     ```bash
-    cd Mikrotik-Billing-Manager
+    cd Billing-Manager-V3
     ```
 
 3.  **Install Dependencies & Build Frontend:**
@@ -181,7 +181,7 @@ You can now access your application directly by navigating to your server's IP a
 
 ## Troubleshooting
 
-### Error: `Cannot find module '/var/www/html/Mikrotik-Billing-Manager/...'`
+### Error: `Cannot find module '/var/www/html/Billing-Manager-V3/...'`
 
 This error occurs if you rename the project directory *after* starting the application with `pm2`. The `pm2` service saves the full path and doesn't update automatically.
 
